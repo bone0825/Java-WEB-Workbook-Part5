@@ -186,3 +186,104 @@ depednecies{
 네임스페이스에 레이아웃을 적용시킨다.<br>
 `<layout:fragment>`속성을 이용하면 해당 영역은 나중에 다른 파일에서 해당 부분만을 개발할 수 있다.<br>
 위 코드는 'content'와 'script' 부분을 fragment로 지정했다. 새로운 화면을 작성할 때 코드를 그대로 활용하면서 'content/script' 중 원하는 영역만을 작성할 수 있다.
+
+> ## 5.3 Spring Data JPA
+
+JPA는 간단하게 '자바로 영속 영역을 처리하는 API'라고 해석할 수 있다. JPA의 상위 개념은 ORM(Object Relational Mapping)이라는 패러다임으로 이어지는데 이는 '객체지향'으로 구성한 시스템을 관계형 데이터베이스에 매핑하는 패러다임이다.
+
+>JPA에서 영속성은 Entitiy를 영구적으로 저장해주는 환경을 의미한다.
+<br>
+<br>
+
+JPA는 스프링과 연동할 때 Spring Data JPA라는 라이브러리를 이용한다. 이는 JPA를 단독으로 활요할 때 보다 더 적은 양의 코드로 많은 기능을 활용할 수 있다는 장점이 있다.
+
+<br>
+CRUD의 경우 검색 조건에 따라 다른 쿼리가 실행될 수 있도록 해야한는데 Spring Data JAP의 경우 Querydsl 이나 jOOQ등을 이용한다.
+국내에서는 Querydsl을 주로 이용한다.
+
+- ### Board 엔티티와 JpaRepository
+
+JPA를 이용하는 개발의 핵심은 객체지향을 통해 영속 계층을 처리하는데 있다. 따라서 JPA를 이용할 때 테이블과 SQL을 다루는 것이 아닌 데이터에 해당하는 객체를 엔티티 객체라는 것으로 다루고, JPA로 이를 데이터베이스와 연동해서 관리한다.
+
+엔티티 객체는 쉽게 말해 PK를 가지는 자바의 객체이다.엔티티 객체를 위해 `@Entitiy`를 반드시 적용하고, 각각의 객체를 식별하기 위해 `@Id`를 이용해 구분한다.
+
+auto increment를 이용하기 위해 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 적용한다.
+
+이 외에도 자동으로 키를 생성하는 전략은 다음과 같다.
+- IDENTITY : 데이터베이스에 위임(MySQL/MariaDB) - auto_increment
+- SEQUENCE : 데이터베이스 시퀀스 오브젝트 사용 (ORACLE) -@SequenceGenerator 필요
+- TABLE : 키 생성용 테이블 사용, 모든 DB에서 사용 - @TableGenerator 필요
+- AUTO : 방언에 따라 자동 지정, 기본값
+
+>표준 SQL 문법 외에 독자적인 기능을 가진 다양한 데이터베이스 제품이 존재하고, 각각의 데이터 베이스가 제공하는 문법과 함수에는 차이가 있다.
+> 
+> 이러한 차이를 방언(dialect)라고 하며 JPA는 종속되지 않은 추상화된 방언 클래스를 제공하고 있어 변경된 DBMS라도 자동으로 처리할 수 있다.
+
+Spring Data JPA는 자동으로 객체를 생성하고 이를 통해 예외 처리 등을 자동으로 처리하는데 이를 위해 JapRepository 인터페이스를 제공한다.
+
+#### _@MappedSuperClass를 이용한 공통 속성 처리_
+
+데이터베이스의 거의 모든 테이블에는 데이터가 추가된 시간이나 수정된 시간 등이 공통으로 칼럼으로 작성된다.<br>
+
+자바에서는 이를 쉽게 처리하고자 `@MappedSuperClass`를 이용해 공통으로 사용되는 칼럼들을 지정하고 해당 클래스를 상속해 처리한다.
+
+이때 가장 중요한 부분은 자동으로 Spring Data JPA의 AuditingEntityListener를 지정하는 부분이다.
+이를 적용하면 엔티티가 데이터베이스에 추가되거나 변경될 때 자동으로 시간 값을 지정할 수 있다.
+
+AuditingEntityListener를 활성화 시키기 위해서는 프로젝트 설정에 `@EnableJpaAuditing`을 추가해야만 한다.
+
+#### _JpaRepository 인터페이스_
+
+Spring Data JPA를 이용할 때 JpaRepository라는 인터페이스를 이용해 인터페이스 선언만으로 데이터베이스 관련 작업을 어느 정도 처리할 수 있다.
+
+개발 단계에서 JpaRepository 인터페이스를 상속하는 인터페이스를 선언하는 것만으로 CRUD와 페이징 처리가 모두 완료된다.
+
+다만 JpaRepository 인터페이스를 상속할 떄에는 엔티티 타입과 @Id 타입을 지정해 주어야 하는 점을 제외하면 아무런 코드가 없이도 개발이 가능하다.
+
+
+#### _JpaRepository insert_
+
+데이터베이스에 insert를 실행하는 기능은 JpaRepository의 save()를 통해 이루어진다.<br>
+save()는 현재의 영속 컨텍스트 내에 데이터가 존재하는 찾아보고 해당 엔티티 객체가 없을 때는 insert, 존재할 때는 update를 자동으로 실행한다.
+
+#### _JpaRepository select_
+
+특정한 번호의 게시물을 조회하는 기능은 findById()를 이용해서 처리한다.<br>
+특이하게도 findById()의 리턴 타입은 Optional<T>이다.
+
+#### _JpaRepository update_
+
+update기능은 insert와 동일하게 save()를 통해 처리된다. 동일한 @Id 값을 가지는 객체를 생성해서 처리할 수 있다.<br>
+update는 등록 시간이 필요하므로 가능하면 findById()로 가져온 객체를 이용해서 약간의 수정을 통해 처리하자.
+
+일반적으로 엔티티 객체는 가능하면 최사한의 변경이나 변경이 없는 불변(immutabele)하게 설계하는 것이 좋지만, 반드시 강제적인 사항은 아니므로 Board 클래스에 수정이 가능한 부분을 미리 메소드로 설계한다.(setter)
+
+#### _JpaRepository delete_
+
+delete는 @Id에 해당하는 값으로 deleteById()를 통해 실행할 수 있다.
+
+<br>
+
+>수정이나 삭제시 굳이 select 문이 먼저 실행되는 이유를 고민할 필요가 있다.<br>
+>JPA를 이용하는 것은 엄밀히 말하면 영속 컨텍스트와 데이터베이스를 동기화해서 관리한다는 의미이다. 그러므로 특정 엔티티 객체가 추가되면 영속 컨텍스트에 추가하고, 데이터베이스와 동기화가 이러어져야 한다.
+> 마찬가지로 수정이나 삭제를 한다면 영속 컨텍스트에 해당 엔ㄷ티티 객체가 존재해야만 하므로 먼저 select로 엔티티 객체를 영속 컨텍스트에 저장해서 이를 삭제한 후에 delete가 이루어 진다.
+
+#### _Pageable과 Page<E>타입_
+
+페이징 처리는 Pageable이라는 타입의 객체를 구성해서 파라미터로 전달하면 된다.<br>
+Pageable은 인터페이스로 설계되어이쏙, 일반적으로는 PageRequest.of()의 기능을 이용해 개발이 가능하다.
+
+- PageRequest.of(페이지 번호,사이즈) : 페이지 번호는 0부터
+- PageRequest.of(페이지 번호,사이즈,Sort) : 정렬 조건 추가
+- PageRequest.of(페이지 번호,사이즈,Sort.Direction,속성 ...) : 정렬 방향과 여러 속성 지정
+
+파라미터로 Pageable을 이용하면 리턴 타입은 Page<T>타입을 이용할 수 있는데 이는 단순 목록뿐 아니라 페이징 처리에 데이터가 많은 경우에는 count 처리를 자동으로 실행한다.<br>
+
+대부분의 Pageable 파라미터는 메소드 마지막에 사용하고, 파라미터에 Pageable이 있는 경우 메소드의 리턴 타입을 Page<T>로 설계한다.
+
+<br>
+
+JpaRepository에는 findAll()이라는 기능을 제공하여 기본적인 페이징 처리를 지원한다.
+
+findAll()의 리턴 타입으로 나오는 Page<T>타입은 내부적으로 페이징 처리에 필요한 여러 정보를 처리한다. <br>
+예를 들어 다음 페이지가 존재하는지, 이전 페이지가 존재하는지, 전체 데이터의 개수는 몇 개인지 등의 기능을 모두 알 수 있다.
