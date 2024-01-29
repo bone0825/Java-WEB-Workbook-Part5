@@ -287,3 +287,111 @@ JpaRepository에는 findAll()이라는 기능을 제공하여 기본적인 페�
 
 findAll()의 리턴 타입으로 나오는 Page<T>타입은 내부적으로 페이징 처리에 필요한 여러 정보를 처리한다. <br>
 예를 들어 다음 페이지가 존재하는지, 이전 페이지가 존재하는지, 전체 데이터의 개수는 몇 개인지 등의 기능을 모두 알 수 있다.
+
+<br>
+
+#### _쿼리 메소드와 @Query_
+
+<br>
+
+**쿼리 메소드**는 보통 SQL에서 사용하는 키워드와 칼럼을 결합해 구성하면 그 자체가 JPA에서 사용하는 쿼리가 되는 기능이다.<br>
+일반적으로 메소드 이름은 'findBy...', 'get...'으로 시작하고 칼럼명과 키워드를 결합하는 방식으로 구성한다.
+
+다 실제 사용하려면 상당히 길고 복잡한 메소드를 작성하게 되는 경우가 많다.
+>제목에 특정한 키워드가 존재하는 게시글들을 bno의 역순으로 정렬해서 가져온다.
+> Page<Board> findByTitleContainingOrderByBnoDesc(String keyword, Pageable pageable);
+
+그래서 쿼리 메소드는 주로 단순한 쿼리를 작성할 때 사용하고, 실제 개발에서는 많이 사용되지 않는다.
+
+
+이와 유사하게 별도의 처리 없이 `@Query`로 JPQL을 이용할 수 있다.
+
+`@Query`어노테이션의 value로 작성하는 문자열을 JPQL이라고 하는데 SQL과 유사하게 JPA에서 사용하는 쿼리 언어라고 생각하면 된다.
+JPA는 데이터베이스에 독립적으로 개발이 가능하므로 특정 데이터베이스에서만 동작하는 SQL 대신 JPA에 맞게 사용하는 JPQL을 사용하는 것이다.
+
+JPQL은 테이블 대신 엔티티 타입을 이용하고 칼럼 대신 엔티티 속성을 이용해 작성된다. JPQL은 SQL을 대신하는 용도로 사용하기 떄문에 SQL에 존재하는 여러 키워드나 기능들이 거의 유사하게 제공된다.
+>@Query("select b from Board b where b.title like concat('%',:keyword,'%')")
+> Page<Board> findkeyword(String keyword, Pageable pageable);
+
+@Query를 이용하면 크게 쿼리 메소드가 할 수 없는 몇가지 기능을 할 수 있다.
+- 조인과 같이 복잡한 쿼리를 실행할 수 있다.
+- 원하는 속성들만 추출해 Object[]나 DTO로 처리할 수 있다.
+- nativeQuery속성값을 true로 지정해 특정 데이터베이스에서 동작하는 SQL을 사용할 수 있다.
+
+- ### Querydsl을 이용한 동적 쿼리 처리
+
+JPA나 JPQL을 이용하면 무척 편리하지만, 어노테이션을 이용해 지정하기 때문에 고정된 형태라는 단점이 있다.
+
+예를들어 검색 기능에서 '제목/내용/작성자'와 같이 단일 조건 외에도 '제목과 내용', '제목과 작성자' 등 복합적인 검색 조건이 생길 수 있고 이에 따른 모든 경우의 수를 별도의 메소드로 작성하는 것은 어렵다.
+
+이러한 문제의 근본 원인은 JPQL이 정적으로 고정되기 떄문이다. 이를 해별하기위해 국내에서 가장 많이 사용되는 방식은 **Querydsl**이다.
+
+<br>
+
+엄밀히 말하면 Querydsl은 JPA의 구현체인 Hibernate 프레임워크가 사용하는 HQL(Hibernate Query Language)을 동적으로 생성할 수 있는 프레임워크지만 JPA를 지원한다.
+
+Querydsl을 이용하면 자바 코드를 이용하기 떄문에 타입의 안정성을 유지한 상태에서 쿼리를 작성할 수 있따.
+
+이를 이용하기 위해서 Q도메인이라는 존재가 필요한데 Q도메인은 Querydsl의 설정을 통해 기존 엔티티 클래스를 Querydsl에서 사용하기 위해 별도의 코드로 생성하는 클래스이다.
+
+```build.gradle
+//queryDsl 설정
+    implementation "com.querydsl:querydsl-jpa:${queryDslVersion}:jakarta"
+    annotationProcessor(
+            "jakarta.persistence:jakarta.persistence-api",
+            "jakarta.annotation:jakarta.annotation-api",
+            "com.querydsl:querydsl-apt:${queryDslVersion}:jakarta"
+    )
+```
+
+- Q도메인 생성 및 querydsl을 위해 위 코드를 build.gradle에 추가한다.
+- gradle의 other > compileJava를 실행한다.
+- 만들어 둔 엔티티에 대해 build에 Q도메인이 추가된다.
+![img.png](img.png)
+
+#### _기존 Repository와 Querydsl 연동_
+
+Querydsl을 기존 코드에 연동하기 위해 다음과 같은 과정으로 작성한다.
+
+- Querydsl을 이용할 인터페이스 선언 (BoardSearch)
+- "인터페이스 이름 + Impl"의 이름으로 클래스 선언 / 이때 QuerydslRepositorySupport라는 부모 클래스를 지정하고 인터페이스 구현 (BoardSearchImpl)
+- 기존 Repository에는 부모 인터페이스로 Querydsl을 위한 인터페이스 지정. (BoardRepository)
+
+#### _기존 Repository와 Querydsl 연동_
+
+Querydsl의 목적은 '타입' 기반으로 '코드'를 이용해 JPQL쿼리를 생성하고 실행하는 것이다. <br>
+
+아때 코드를 만드는 대신 클래스가 Q도메인 클래스이다. 따라서 Q도메인을 이용한 코드를 작성한다.
+```Java
+public class BoardSearchImpl extends QuerydslRepositorySupport implements BoardSearch {
+
+    public BoardSearchImpl() {
+        super(Board.class);
+    }
+
+    @Override
+    public Page<Board> search1(Pageable pageable) {
+        QBoard board = QBoard.board; //Q도메인 객체
+        JPQLQuery<Board> query = from(board);
+        query.where(board.title.contains("1"));
+
+        //paging
+        this.getQuerydsl().applyPagination(pageable,query);
+
+        List<Board> list = query.fetch(); //JPQLQuery 실행
+        long count = query.fetchCount(); // count 쿼리 실행
+
+        return null;
+    }
+}
+```
+
+JPQLQuery는 @Query로 작성했던 JPQL를 코드를 통해 생성할 수 있게 한다. 이를 통해 where나 group by, join 처리 등이 가능하다. <br>
+
+실행은 fetch()기능을 이용하고, fetchCount()를 이용하면 count쿼리를 실행할 수 있다.
+
+#### _Querydsl로 Pageable 처리_
+
+Querydsl의 실행 시 Pageable을 처리하는 방법은 상속한 QuerydslRepositorySupport 클래스의 기능을 이용한다. <br>
+
+`this.getQuerydsl().applyPagination(pageable,query);`을 적용하여 실행되는 쿼리의 마지막에는 MariaDB가 페이징 처리에 사용하는 limit가 적용된다.

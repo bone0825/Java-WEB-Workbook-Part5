@@ -63,5 +63,6 @@ public class BoardRepositoryTests {
 
         Pageable pageable = PageRequest.of(0,10, Sort.by("bno").descending());
         Page<Board> result = boardRepository.findAll(pageable);
+
     }
 }
