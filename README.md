@@ -395,3 +395,34 @@ JPQLQuery는 @Query로 작성했던 JPQL를 코드를 통해 생성할 수 있�
 Querydsl의 실행 시 Pageable을 처리하는 방법은 상속한 QuerydslRepositorySupport 클래스의 기능을 이용한다. <br>
 
 `this.getQuerydsl().applyPagination(pageable,query);`을 적용하여 실행되는 쿼리의 마지막에는 MariaDB가 페이징 처리에 사용하는 limit가 적용된다.
+
+#### _Querydsl로 검색 조건과 목록 처리_
+
+게시물의 다양한 검색 조건을 Querydsld르 이용해 원하는 JPQL을 생성해 처리할 수 있다.<br>
+검색의 경우 '제목(t), 내용(c), 작성자(w)'의 좋바을 통해 이루어진다고 가정하고 이를 페이징 처리와 함께 동작하도록 구성하자.
+
+
+#### _BooleanBuilder_
+
+'제목이나 내용'에 특정 키워드가 존재하고 bno가 0보다 큰 데이터를 찾는다면 SQl에서는 다음과 같이 작성할 수 있다.
+
+```sql
+select * from board
+where (title like concat '%keyword%' or content like '%keyword%') and bno > 0
+```
+where 절에서 and와 or이 석여 있을 때 연산자의 우서순위 때문에 '()'를 적절히 이용해야 한다.
+
+이를 Querydsl에서 이용할 때 '()'처리를 위해 BooleanBuilder를 이용할 수 있다.
+
+``` java
+JPQLQuery<Board> query = from(board);
+BooleanBuilder bb = new BooleanBuilder();
+
+booleanbuilder.or(board.title.contains("1")); //or
+booleanbuilder.or(board.content.contains("1"));
+
+query.where(bb); // and
+query.where(board.bno.gt(0L)); // greater than
+```
+
+
