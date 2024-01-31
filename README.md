@@ -425,4 +425,59 @@ query.where(bb); // and
 query.where(board.bno.gt(0L)); // greater than
 ```
 
+> ## 5.4 게시물 관리 완성 
 
+앞에서 학습한 내용을 바탕으로 게시물 관리 프로젝트를 완성하고자 한다. 내용음 다음과 같다.
+
+- Spring Data JPA 이용, 영속 계층 처리
+- Thymeleaf 이용한 화면 처리
+- Spring boot 이용한 controller service 처리
+
+<br>
+
+- ### 서비스 계층과 DTO 구현
+
+BoardRepository의 모든 메소드는 서비스 계층을 통해 DTO로 변환되어 처리되도록 구성한다. 엔티티 객체는 영속 컨텍스트에서 관리되므로 가능하면 많은 계층에서 사용되지 않는 것이 좋다.
+
+엔티티 객체를 DTO로 변환하거나 반대의 작업을 처리하기 위해 ModelMapper를 이용할 것이다.
+
+#### _ModelMapper 설정_
+
+build.gradle에 다음 코드를 dependnecies항목에 추가한다.
+```java
+// https://mvnrepository.com/artifact/org.modelmapper/modelmapper
+implementation group: 'org.modelmapper', name: 'modelmapper', version: '3.2.0'
+```
+
+이후 config패키지와 RootConfig 클래스를 구성하고 RootConfig에는 `@Configuration`을 이용해 해당 클래스가 스프링의 설정임을 명시하고 ModelMapper를 `@Bean`을 이용해 스프링의 빈으로 설정한다.
+
+```java
+package org.zerock.b01.config;
+
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RootConfig {
+
+    @Bean
+    public ModelMapper getMapper(){
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration()
+                .setFieldMatchingEnabled(true)
+                .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+        
+        return modelMapper;
+    }
+}
+```
+
+#### _CRUD 작업 처리_
+
+dto 패키지를 추가하고, BoardDTO 클래스를 추가한다.<br>
+이후 service 패키지에 BoardService 인터페이스, BoardServiceImpl 클래스를 추가한다.
+
+service 인터페이스에 필요한 메서드들을 선언하고, BoardServiceImpl에서 이를 구현하도록 한다.
