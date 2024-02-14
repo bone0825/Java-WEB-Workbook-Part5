@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-public class Board extends BaseEntity {
+public class Board extends BaseEntity { //VO 값 그 자체를 나타내는 객체
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
