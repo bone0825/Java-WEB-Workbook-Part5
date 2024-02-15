@@ -10,7 +10,8 @@ public interface BoardService {
     //조회 하기 return DTO
     BoardDTO readOne(Long bno); //Service to Controller
 
-    //수정 장겁
+    //수정 작업
     void modify(BoardDTO boardDTO);
-
+    //삭제 작업
+    void remove(Long bno);
 }
