@@ -9,7 +9,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.zerock.b01.domain.Board;
+import org.zerock.b01.dto.BoardDTO;
+import org.zerock.b01.dto.PageRequestDTO;
+import org.zerock.b01.dto.PageResponseDTO;
 import org.zerock.b01.repositroy.BoardRepository;
+import org.zerock.b01.service.BoardService;
 
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -20,6 +24,8 @@ public class BoardRepositoryTests {
 
     @Autowired
     private BoardRepository boardRepository;
+    @Autowired
+    private BoardService boardService;
 
     @Test
     public void testInsert(){
@@ -64,5 +70,19 @@ public class BoardRepositoryTests {
         Pageable pageable = PageRequest.of(0,10, Sort.by("bno").descending());
         Page<Board> result = boardRepository.findAll(pageable);
 
+    }
+
+    @Test
+    public void testList(){
+        PageRequestDTO pageResponseDTO = PageRequestDTO.builder()
+                .type("tcw")
+                .keyword("1")
+                .page(1)
+                .size(10)
+                .build();
+
+        PageResponseDTO<BoardDTO> responseDTO = boardService.list(pageResponseDTO);
+
+        log.info(responseDTO);
     }
 }
